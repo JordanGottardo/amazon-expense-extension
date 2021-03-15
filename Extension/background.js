@@ -1,7 +1,8 @@
-console.log("From background")
+console.log("From background");
 
-const amazonUrlBase = "https://www.amazon.it"
-const amazonOrderHistoryUrlRegex = /^https:\/\/www.amazon.it\/gp\/your-account\/order-history?.*orderFilter/;
+const AMAZON_URL_BASE = "https://www.amazon.it";
+const AMAZON_ORDER_HISTORY_URL_REGEX = /^https:\/\/www.amazon.it\/gp\/your-account\/order-history?.*orderFilter/;
+const ORDER_URL_REGEX = /\/gp.*/;
 let activeTabId = 0;
 
 chrome.tabs.onActivated.addListener(tab => {
@@ -20,10 +21,10 @@ chrome.tabs.onActivated.addListener(tab => {
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (amazonOrderHistoryUrlRegex.test(tab.url) && changeInfo.status === "complete") {
+    if (AMAZON_ORDER_HISTORY_URL_REGEX.test(tab.url) && changeInfo.status === "complete") {
         console.log("Complete");
         console.log(tab);
-        injectForegroundScript(() => sendMessage(tab.id, "SendDomToBackground"), processDom);
+        injectForegroundScript(() => sendMessage(tab.id, "SendDomToBackground", processDom));
 
         let orders = Array.from(document.querySelectorAll("#ordersContainer > div")).slice(1);
         console.log(orders.length);
@@ -31,7 +32,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         orders.forEach(order => {
             console.log(order);
             let orderDetailsLink = order.querySelector(".a-link-normal");
-            console.log(orderDetailsLink["href"]);
+            console.log(orderDetailsLink.href);
         });
 
     }
@@ -40,18 +41,30 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 });
 
+function processDom(domContent) {
+    console.log("Processing DOM");
+
+    let doc = (new DOMParser).parseFromString(domContent, "text/html");
+    let orderDetailsLinks = doc.querySelectorAll(".a-unordered-list.a-nostyle.a-vertical > a");
+    console.log(orderDetailsLinks);
+
+    chrome.windows.create({
+        "url": AMAZON_URL_BASE + ToUrl(orderDetailsLinks[0].href)
+    });
+    // TODO: get domContent once again from frontend, parse product price and add it to total
+}
+
+function ToUrl(wrongBaseUriUrl) {
+    return ORDER_URL_REGEX.exec(wrongBaseUriUrl)[0];
+}
+
 function injectForegroundScript(callback) {
     chrome.tabs.executeScript(null, {
         file: "./foreground.js"
     }, () => {
-        console.log("Foreground script has been injected")
+        console.log("Foreground script has been injected");
         callback();
     });
-}
-
-function processDom(dom) {
-    console.log("Processing DOM");
-    console.log(dom);
 }
 
 function sendMessage(tabId, message, responseCallback) {
@@ -60,8 +73,8 @@ function sendMessage(tabId, message, responseCallback) {
     chrome.tabs.sendMessage(
         tabId, {
             message: message
-        }, {},
-        responseCallback);
+        }, {}, responseCallback
+    );
 }
 
 // ============ DEMO STUFF

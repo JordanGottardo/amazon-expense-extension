@@ -3,10 +3,9 @@ console.log("From foreground");
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.message === "SendDomToBackground") {
-        console.log(request.message);
-        console.log(sendResponse);
-        // sendResponse(document.querySelector("*"));
-        sendResponse({}); // This is not working: response is not being invoked
+        let domContent = new XMLSerializer().serializeToString(document);
+
+        sendResponse(domContent);
     }
 });
 
