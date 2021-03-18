@@ -1,13 +1,21 @@
 console.log("From foreground");
 //document.querySelector(".lnXdpd").classList.add("spin")
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.message === "SendDomToBackground") {
-        let domContent = new XMLSerializer().serializeToString(document);
+const AMAZON_ORDER_HISTORY_URL_REGEX = /^https:\/\/www.amazon.it\/gp\/your-account\/order-history?.*orderFilter/;
+const AMAZON_ORDER_DETAILS_URL_REGEX = /^https:\/\/www.amazon.it\/gp\/your\-account\/order\-details.*/;
 
-        sendResponse(domContent);
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log("current url " + window.location.href);
+   
+    if (request.message === "SendDomToBackground") {
+        sendResponse(getDomContent());
     }
 });
+
+function getDomContent() {
+    return new XMLSerializer().serializeToString(document);
+}
 
 // ============= DEMO STUFF
 

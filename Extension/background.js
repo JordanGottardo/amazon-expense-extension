@@ -2,29 +2,28 @@ console.log("From background");
 
 const AMAZON_URL_BASE = "https://www.amazon.it";
 const AMAZON_ORDER_HISTORY_URL_REGEX = /^https:\/\/www.amazon.it\/gp\/your-account\/order-history?.*orderFilter/;
+const AMAZON_ORDER_DETAILS_URL_REGEX = /^https:\/\/www.amazon.it\/gp\/your\-account\/order\-details.*/;
 const ORDER_URL_REGEX = /\/gp.*/;
+const CURRENCY_REGEX = /\d*,\d*/;
+const SEND_DOM_MESSAGE = "SendDomToBackground";
+
 let activeTabId = 0;
 
-chrome.tabs.onActivated.addListener(tab => {
-    chrome.tabs.get(tab.tabId, currentTabInfo => {
-        activeTabId = tab.tabId;
-        console.log(currentTabInfo);
-        if (/^https:\/\/www\.amazon\.it\/gp\/css\/order\-history/.test(currentTabInfo.url)) {
-            chrome.tabs.insertCSS(null, {
-                file: "./mystyles.css"
-            })
-            chrome.tabs.executeScript(null, {
-                file: "./foreground.js"
-            }, () => console.log("I injected"))
-        }
-    })
-});
-
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (AMAZON_ORDER_HISTORY_URL_REGEX.test(tab.url) && changeInfo.status === "complete") {
+    let isCurrentPageOrderHistory = AMAZON_ORDER_HISTORY_URL_REGEX.test(tab.url);
+    let isCurrentPageOrderDetails = AMAZON_ORDER_DETAILS_URL_REGEX.test(tab.url)
+    if ((isCurrentPageOrderHistory || isCurrentPageOrderDetails) &&
+        changeInfo.status === "complete") {
         console.log("Complete");
         console.log(tab);
-        injectForegroundScript(() => sendMessage(tab.id, "SendDomToBackground", processDom));
+        let responseCallback = undefined;
+        if (isCurrentPageOrderHistory) {
+            responseCallback = processOrderHistoryPageDom;
+        } else if (isCurrentPageOrderDetails) {
+            responseCallback = processOrderDetailPageDom;
+        }
+
+        injectForegroundScript(() => sendMessage(tab.id, SEND_DOM_MESSAGE, responseCallback));
 
         let orders = Array.from(document.querySelectorAll("#ordersContainer > div")).slice(1);
         console.log(orders.length);
@@ -34,24 +33,40 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             let orderDetailsLink = order.querySelector(".a-link-normal");
             console.log(orderDetailsLink.href);
         });
-
     }
 
     // chrome.windows.remove(tab.windowId);
 
 });
 
-function processDom(domContent) {
-    console.log("Processing DOM");
+function processOrderHistoryPageDom(domContent) {
+    console.log("Processing order history page DOM");
 
-    let doc = (new DOMParser).parseFromString(domContent, "text/html");
+    let doc = GetDocumentFromDomContent(domContent);
     let orderDetailsLinks = doc.querySelectorAll(".a-unordered-list.a-nostyle.a-vertical > a");
     console.log(orderDetailsLinks);
 
     chrome.windows.create({
         "url": AMAZON_URL_BASE + ToUrl(orderDetailsLinks[0].href)
     });
-    // TODO: get domContent once again from frontend, parse product price and add it to total
+}
+
+function processOrderDetailPageDom(domContent) {
+    console.log("Processing order detail page DOM");
+    console.log(domContent);
+    let doc = GetDocumentFromDomContent(domContent);
+  
+    totalOrderValue = Number(
+        CURRENCY_REGEX
+        .exec(doc
+        .querySelector("#od-subtotals DIV:nth-child(5) DIV:nth-child(2)")
+        .innerText)[0]
+        .replace(",", "."));
+    console.log("TotalOrderValue = " + totalOrderValue);
+}
+
+function GetDocumentFromDomContent(domContent) {
+    return (new DOMParser).parseFromString(domContent, "text/html");
 }
 
 function ToUrl(wrongBaseUriUrl) {
@@ -92,6 +107,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
     }
 })
+
+chrome.tabs.onActivated.addListener(tab => {
+    chrome.tabs.get(tab.tabId, currentTabInfo => {
+        activeTabId = tab.tabId;
+        console.log(currentTabInfo);
+        if (/^https:\/\/www\.amazon\.it\/gp\/css\/order\-history/.test(currentTabInfo.url)) {
+            chrome.tabs.insertCSS(null, {
+                file: "./mystyles.css"
+            })
+            chrome.tabs.executeScript(null, {
+                file: "./foreground.js"
+            }, () => console.log("I injected"))
+        }
+    })
+});
 
 chrome.tabs.onActivated.addListener(tab => {
     chrome.tabs.get(tab.tabId, currentTabInfo => {
