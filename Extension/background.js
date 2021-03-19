@@ -4,10 +4,12 @@ const AMAZON_URL_BASE = "https://www.amazon.it";
 const AMAZON_ORDER_HISTORY_URL_REGEX = /^https:\/\/www.amazon.it\/gp\/your-account\/order-history?.*orderFilter/;
 const AMAZON_ORDER_DETAILS_URL_REGEX = /^https:\/\/www.amazon.it\/gp\/your\-account\/order\-details.*/;
 const ORDER_URL_REGEX = /\/gp.*/;
-const CURRENCY_REGEX = /\d*,\d*/;
+const CURRENCY_REGEX = /\d*,\d*/g;
 const SEND_DOM_MESSAGE = "SendDomToBackground";
 
 let activeTabId = 0;
+let orderDetailsLinks;
+let parsedOrderDetailsLinkCount = 0;
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     let isCurrentPageOrderHistory = AMAZON_ORDER_HISTORY_URL_REGEX.test(tab.url);
@@ -43,26 +45,75 @@ function processOrderHistoryPageDom(domContent) {
     console.log("Processing order history page DOM");
 
     let doc = GetDocumentFromDomContent(domContent);
-    let orderDetailsLinks = doc.querySelectorAll(".a-unordered-list.a-nostyle.a-vertical > a");
+    orderDetailsLinks = doc.querySelectorAll(".a-unordered-list.a-nostyle.a-vertical > a");
     console.log(orderDetailsLinks);
 
-    chrome.windows.create({
-        "url": AMAZON_URL_BASE + ToUrl(orderDetailsLinks[0].href)
-    });
+    CreateNewWindow(orderDetailsLinks[0]);
+    parsedOrderDetailsLinkCount = 1;
 }
 
 function processOrderDetailPageDom(domContent) {
     console.log("Processing order detail page DOM");
-    console.log(domContent);
     let doc = GetDocumentFromDomContent(domContent);
-  
-    totalOrderValue = Number(
-        CURRENCY_REGEX
-        .exec(doc
-        .querySelector("#od-subtotals DIV:nth-child(5) DIV:nth-child(2)")
-        .innerText)[0]
-        .replace(",", "."));
-    console.log("TotalOrderValue = " + totalOrderValue);
+
+    let orderSummary = doc.querySelectorAll("#od-subtotals > div");
+    let orderSummaryArray = Array.from(orderSummary).reverse();
+
+    console.log("Order summary ");
+    console.log(orderSummary);
+    console.log("Order summary array ");
+    console.log(orderSummaryArray);
+
+    var indexOfTotalRow = GetIndex(orderSummaryArray, "Totale:");
+    var indexOfImportoBuonoRegalo = GetIndex(orderSummaryArray, "Importo Buono Regalo:");
+    var indexOfScontiApplicati = GetIndex(orderSummaryArray, "Sconti applicati:");
+    var indexOfTotaleRimborso = GetIndex(orderSummaryArray, "Totale rimborso");
+
+    console.log("indexOfTotalRow = " + indexOfTotalRow);
+    console.log("indexOfImportoBuonoRegalo = " + indexOfImportoBuonoRegalo);
+    console.log("indexOfScontiApplicati = " + indexOfScontiApplicati);
+    console.log("indexOfTotaleRimborso = " + indexOfTotaleRimborso);
+
+    totalValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfTotalRow)
+    buonoRegaloValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfImportoBuonoRegalo)
+    scontiApplicatiValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfScontiApplicati)
+    totaleRimborsoValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfTotaleRimborso)
+
+    console.log("totalValue = " + totalValue);
+    console.log("buonoRegaloValue = " + buonoRegaloValue);
+    console.log("scontiApplicatiValue = " + scontiApplicatiValue);
+    console.log("totaleRimborsoValue = " + totaleRimborsoValue);
+
+    if (parsedOrderDetailsLinkCount < orderDetailsLinks.length) {
+        let nextUrl = orderDetailsLinks[parsedOrderDetailsLinkCount];
+        parsedOrderDetailsLinkCount++;
+        CreateNewWindow(nextUrl);
+    }
+}
+
+function GetIndex(orderSummaryArray, innerText) {
+    return orderSummaryArray
+        .findIndex(d => {
+            if (d.children.length < 2) {
+                return false;
+            }
+            return d.children[0].innerText.includes(innerText);
+        });
+}
+
+function GetValueOfElementAtIndex(orderSummary, index) {
+    if (index === -1) {
+        return 0;
+    }
+
+    let matches = orderSummary[index].innerText.match(CURRENCY_REGEX);
+    return Number(matches[matches.length - 1].replace(",", "."));
+}
+
+function CreateNewWindow(wrongBaseUriUrl) {
+    chrome.windows.create({
+        "url": AMAZON_URL_BASE + ToUrl(wrongBaseUriUrl)
+    });
 }
 
 function GetDocumentFromDomContent(domContent) {
