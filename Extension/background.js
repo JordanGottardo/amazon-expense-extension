@@ -10,6 +10,7 @@ const SEND_DOM_MESSAGE = "SendDomToBackground";
 let activeTabId = 0;
 let orderDetailsLinks;
 let parsedOrderDetailsLinkCount = 0;
+let openedOrderDetailsWindows = [];
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     let isCurrentPageOrderHistory = AMAZON_ORDER_HISTORY_URL_REGEX.test(tab.url);
@@ -64,30 +65,34 @@ function processOrderDetailPageDom(domContent) {
     console.log("Order summary array ");
     console.log(orderSummaryArray);
 
-    var indexOfTotalRow = GetIndex(orderSummaryArray, "Totale:");
-    var indexOfImportoBuonoRegalo = GetIndex(orderSummaryArray, "Importo Buono Regalo:");
-    var indexOfScontiApplicati = GetIndex(orderSummaryArray, "Sconti applicati:");
-    var indexOfTotaleRimborso = GetIndex(orderSummaryArray, "Totale rimborso");
+    let indexOfTotalRow = GetIndex(orderSummaryArray, "Totale:");
+    let indexOfImportoBuonoRegalo = GetIndex(orderSummaryArray, "Importo Buono Regalo:");
+    let indexOfScontiApplicati = GetIndex(orderSummaryArray, "Sconti applicati:");
+    let indexOfTotaleRimborso = GetIndex(orderSummaryArray, "Totale rimborso");
 
     console.log("indexOfTotalRow = " + indexOfTotalRow);
     console.log("indexOfImportoBuonoRegalo = " + indexOfImportoBuonoRegalo);
     console.log("indexOfScontiApplicati = " + indexOfScontiApplicati);
     console.log("indexOfTotaleRimborso = " + indexOfTotaleRimborso);
 
-    totalValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfTotalRow)
-    buonoRegaloValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfImportoBuonoRegalo)
-    scontiApplicatiValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfScontiApplicati)
-    totaleRimborsoValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfTotaleRimborso)
+    let totalValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfTotalRow)
+    let buonoRegaloValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfImportoBuonoRegalo)
+    let scontiApplicatiValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfScontiApplicati)
+    let totaleRimborsoValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfTotaleRimborso)
+    let totalOrderValue = totalValue + buonoRegaloValue - scontiApplicatiValue - totaleRimborsoValue;
 
-    console.log("totalValue = " + totalValue);
-    console.log("buonoRegaloValue = " + buonoRegaloValue);
-    console.log("scontiApplicatiValue = " + scontiApplicatiValue);
-    console.log("totaleRimborsoValue = " + totaleRimborsoValue);
+    // console.log("totalValue = " + totalValue);
+    // console.log("buonoRegaloValue = " + buonoRegaloValue);
+    // console.log("scontiApplicatiValue = " + scontiApplicatiValue);
+    // console.log("totaleRimborsoValue = " + totaleRimborsoValue);
+    console.log("totalOrderValue = " + totalOrderValue);
 
     if (parsedOrderDetailsLinkCount < orderDetailsLinks.length) {
         let nextUrl = orderDetailsLinks[parsedOrderDetailsLinkCount];
         parsedOrderDetailsLinkCount++;
         CreateNewWindow(nextUrl);
+    } else {
+        CloseAllWindows(openedOrderDetailsWindows);
     }
 }
 
@@ -99,6 +104,12 @@ function GetIndex(orderSummaryArray, innerText) {
             }
             return d.children[0].innerText.includes(innerText);
         });
+}
+
+function CloseAllWindows(windows) {
+    windows.forEach(w => {
+        chrome.windows.remove(w.id);
+    })
 }
 
 function GetValueOfElementAtIndex(orderSummary, index) {
@@ -113,6 +124,9 @@ function GetValueOfElementAtIndex(orderSummary, index) {
 function CreateNewWindow(wrongBaseUriUrl) {
     chrome.windows.create({
         "url": AMAZON_URL_BASE + ToUrl(wrongBaseUriUrl)
+    }, newWindow => {
+        console.log("New window created");
+        openedOrderDetailsWindows.push(newWindow);
     });
 }
 
