@@ -9,17 +9,55 @@ const SEND_DOM_MESSAGE = "SendDomToBackground";
 
 let activeTabId = 0;
 let orderDetailsLinks;
+let currentOrderPage = 1;
+let currentWindowId;
+let orderPagesLinks;
+let orderWindowId;
+
 let parsedOrderDetailsLinkCount = 0;
 let openedOrderDetailsWindows = [];
+let finishedParsingOrderDetails = false;
+
+chrome.windows.onFocusChanged.addListener(windowId => {
+    console.log("focus changed currentWindow= " + windowId + " orderWindowId= " + orderWindowId);
+
+    let isMainOrderWindow = windowId == orderWindowId;
+    let areThereOrderPagesLeft = currentOrderPage < orderPagesLinks.length;
+
+    console.log("IsMainOrderWindow = " + isMainOrderWindow + " finishedParsingOrderDetails = " + finishedParsingOrderDetails + " areThereOrderPagesLeft = " +
+        areThereOrderPagesLeft);
+
+    if (windowId == orderWindowId &&
+        finishedParsingOrderDetails &&
+        currentOrderPage < orderPagesLinks.length) {
+        finishedParsingOrderDetails = false;
+        console.log("Opening page at index " + currentOrderPage);
+        CreateNewWindow(orderPagesLinks[currentOrderPage].href);
+        currentOrderPage++;
+    } else if (windowId == orderWindowId && finishedParsingOrderDetails && currentOrderPage === orderPagesLinks.length) {
+        finishedParsingOrderDetails = false;
+        currentOrderPage = 1;
+        CloseWindow(windowId);
+    }
+
+    if (windowId != -1 && windowId != orderWindowId && finishedParsingOrderDetails) {
+        console.log("Closing page at index " + currentOrderPage)
+        CloseWindow(windowId);
+    }
+})
+
+// chrome.tabs.onActivated.addListener(activeInfo => {
+//     console.log("tabOnActivated " + activeInfo.tabId + " " + activeInfo.windowId);
+// })
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    let isCurrentPageOrderHistory = AMAZON_ORDER_HISTORY_URL_REGEX.test(tab.url);
+    let isCurrentPageOrderHistory = IsCurrentPageOrderHistoryPage(tab);
     let isCurrentPageOrderDetails = AMAZON_ORDER_DETAILS_URL_REGEX.test(tab.url)
     if ((isCurrentPageOrderHistory || isCurrentPageOrderDetails) &&
         changeInfo.status === "complete") {
-        console.log("Complete");
-        console.log(tab);
+        currentWindowId = tab.windowId;
         let responseCallback = undefined;
+
         if (isCurrentPageOrderHistory) {
             responseCallback = processOrderHistoryPageDom;
         } else if (isCurrentPageOrderDetails) {
@@ -29,17 +67,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         injectForegroundScript(() => sendMessage(tab.id, SEND_DOM_MESSAGE, responseCallback));
 
         let orders = Array.from(document.querySelectorAll("#ordersContainer > div")).slice(1);
-        console.log(orders.length);
-
-        orders.forEach(order => {
-            console.log(order);
-            let orderDetailsLink = order.querySelector(".a-link-normal");
-            console.log(orderDetailsLink.href);
-        });
     }
-
-    // chrome.windows.remove(tab.windowId);
-
 });
 
 function processOrderHistoryPageDom(domContent) {
@@ -47,9 +75,14 @@ function processOrderHistoryPageDom(domContent) {
 
     let doc = GetDocumentFromDomContent(domContent);
     orderDetailsLinks = doc.querySelectorAll(".a-unordered-list.a-nostyle.a-vertical > a");
-    console.log(orderDetailsLinks);
 
-    CreateNewWindow(orderDetailsLinks[0]);
+    if (!orderWindowId) {
+        orderPagesLinks = GetOrderPagesLinks(doc);
+        orderWindowId = currentWindowId;
+        currentOrderPage = 1;
+    }
+
+    CreateNewOrderDetailsWindow(orderDetailsLinks[0]);
     parsedOrderDetailsLinkCount = 1;
 }
 
@@ -60,40 +93,42 @@ function processOrderDetailPageDom(domContent) {
     let orderSummary = doc.querySelectorAll("#od-subtotals > div");
     let orderSummaryArray = Array.from(orderSummary).reverse();
 
-    console.log("Order summary ");
-    console.log(orderSummary);
-    console.log("Order summary array ");
-    console.log(orderSummaryArray);
-
     let indexOfTotalRow = GetIndex(orderSummaryArray, "Totale:");
     let indexOfImportoBuonoRegalo = GetIndex(orderSummaryArray, "Importo Buono Regalo:");
     let indexOfScontiApplicati = GetIndex(orderSummaryArray, "Sconti applicati:");
     let indexOfTotaleRimborso = GetIndex(orderSummaryArray, "Totale rimborso");
-
-    console.log("indexOfTotalRow = " + indexOfTotalRow);
-    console.log("indexOfImportoBuonoRegalo = " + indexOfImportoBuonoRegalo);
-    console.log("indexOfScontiApplicati = " + indexOfScontiApplicati);
-    console.log("indexOfTotaleRimborso = " + indexOfTotaleRimborso);
 
     let totalValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfTotalRow)
     let buonoRegaloValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfImportoBuonoRegalo)
     let scontiApplicatiValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfScontiApplicati)
     let totaleRimborsoValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfTotaleRimborso)
     let totalOrderValue = totalValue + buonoRegaloValue - scontiApplicatiValue - totaleRimborsoValue;
-
-    // console.log("totalValue = " + totalValue);
-    // console.log("buonoRegaloValue = " + buonoRegaloValue);
-    // console.log("scontiApplicatiValue = " + scontiApplicatiValue);
-    // console.log("totaleRimborsoValue = " + totaleRimborsoValue);
-    console.log("totalOrderValue = " + totalOrderValue);
+    console.log("TotalOrderValue = " + totalOrderValue);
 
     if (parsedOrderDetailsLinkCount < orderDetailsLinks.length) {
         let nextUrl = orderDetailsLinks[parsedOrderDetailsLinkCount];
         parsedOrderDetailsLinkCount++;
-        CreateNewWindow(nextUrl);
+        CreateNewOrderDetailsWindow(nextUrl);
     } else {
+        console.log("Closing all windows");
+        finishedParsingOrderDetails = true;
         CloseAllWindows(openedOrderDetailsWindows);
     }
+}
+
+function GetOrderPagesLinks(doc) {
+    let pagesElements = Array.from(doc.querySelectorAll("#ordersContainer > .a-row li a"));
+    pagesElements.pop();
+
+    return pagesElements;
+}
+
+function IsCurrentPageOrderHistoryPage(tab) {
+    return AMAZON_ORDER_HISTORY_URL_REGEX.test(tab.url);
+}
+
+function CreateNewOrderDetailsWindow(link) {
+    CreateNewWindow(link, AddWindowToOpenedOrderDetailsWindows);
 }
 
 function GetIndex(orderSummaryArray, innerText) {
@@ -108,8 +143,13 @@ function GetIndex(orderSummaryArray, innerText) {
 
 function CloseAllWindows(windows) {
     windows.forEach(w => {
-        chrome.windows.remove(w.id);
-    })
+        CloseWindow(w.id);
+    });
+    openedOrderDetailsWindows = [];
+}
+
+function CloseWindow(windowId) {
+    chrome.windows.remove(windowId);
 }
 
 function GetValueOfElementAtIndex(orderSummary, index) {
@@ -121,13 +161,14 @@ function GetValueOfElementAtIndex(orderSummary, index) {
     return Number(matches[matches.length - 1].replace(",", "."));
 }
 
-function CreateNewWindow(wrongBaseUriUrl) {
+function CreateNewWindow(wrongBaseUriUrl, callback) {
     chrome.windows.create({
         "url": AMAZON_URL_BASE + ToUrl(wrongBaseUriUrl)
-    }, newWindow => {
-        console.log("New window created");
-        openedOrderDetailsWindows.push(newWindow);
-    });
+    }, callback);
+}
+
+function AddWindowToOpenedOrderDetailsWindows(newWindow) {
+    openedOrderDetailsWindows.push(newWindow);
 }
 
 function GetDocumentFromDomContent(domContent) {
@@ -148,8 +189,6 @@ function injectForegroundScript(callback) {
 }
 
 function sendMessage(tabId, message, responseCallback) {
-    console.log("Sending message");
-    console.log(message);
     chrome.tabs.sendMessage(
         tabId, {
             message: message
@@ -159,46 +198,46 @@ function sendMessage(tabId, message, responseCallback) {
 
 // ============ DEMO STUFF
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.message === "check the storage") {
-        chrome.tabs.sendMessage(activeTabId, {
-            message: "Message initiated from background"
-        });
-        sendResponse({
-            message: "Message received from background"
-        });
-        chrome.storage.local.get("password", value => {
-            console.log(value);
-        });
-    }
-})
+// chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+//     if (request.message === "check the storage") {
+//         chrome.tabs.sendMessage(activeTabId, {
+//             message: "Message initiated from background"
+//         });
+//         sendResponse({
+//             message: "Message received from background"
+//         });
+//         chrome.storage.local.get("password", value => {
+//             console.log(value);
+//         });
+//     }
+// })
 
-chrome.tabs.onActivated.addListener(tab => {
-    chrome.tabs.get(tab.tabId, currentTabInfo => {
-        activeTabId = tab.tabId;
-        console.log(currentTabInfo);
-        if (/^https:\/\/www\.amazon\.it\/gp\/css\/order\-history/.test(currentTabInfo.url)) {
-            chrome.tabs.insertCSS(null, {
-                file: "./mystyles.css"
-            })
-            chrome.tabs.executeScript(null, {
-                file: "./foreground.js"
-            }, () => console.log("I injected"))
-        }
-    })
-});
+// chrome.tabs.onActivated.addListener(tab => {
+//     chrome.tabs.get(tab.tabId, currentTabInfo => {
+//         activeTabId = tab.tabId;
+//         console.log(currentTabInfo);
+//         if (/^https:\/\/www\.amazon\.it\/gp\/css\/order\-history/.test(currentTabInfo.url)) {
+//             chrome.tabs.insertCSS(null, {
+//                 file: "./mystyles.css"
+//             })
+//             chrome.tabs.executeScript(null, {
+//                 file: "./foreground.js"
+//             }, () => console.log("I injected"))
+//         }
+//     })
+// });
 
-chrome.tabs.onActivated.addListener(tab => {
-    chrome.tabs.get(tab.tabId, currentTabInfo => {
-        activeTabId = tab.tabId;
-        console.log(currentTabInfo);
-        if (/^https:\/\/www\.amazon\.it\/gp\/css\/order\-history/.test(currentTabInfo.url)) {
-            chrome.tabs.insertCSS(null, {
-                file: "./mystyles.css"
-            })
-            chrome.tabs.executeScript(null, {
-                file: "./foreground.js"
-            }, () => console.log("I injected"))
-        }
-    })
-});
+// chrome.tabs.onActivated.addListener(tab => {
+//     chrome.tabs.get(tab.tabId, currentTabInfo => {
+//         activeTabId = tab.tabId;
+//         console.log(currentTabInfo);
+//         if (/^https:\/\/www\.amazon\.it\/gp\/css\/order\-history/.test(currentTabInfo.url)) {
+//             chrome.tabs.insertCSS(null, {
+//                 file: "./mystyles.css"
+//             })
+//             chrome.tabs.executeScript(null, {
+//                 file: "./foreground.js"
+//             }, () => console.log("I injected"))
+//         }
+//     })
+// });
