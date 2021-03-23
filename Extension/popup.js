@@ -9,8 +9,34 @@ function startCalculation() {
     chrome.windows.create({
         "url": amazonOrderHistoryUrlBase + "year-2021"
     });
+
+    chrome.storage.local.set({
+        "calculationStarted": true
+    });
 }
+
+// function b1() {
+//     chrome.storage.local.set({
+//         "calculationStarted": true
+//     });
+// }
+
+// function b2() {
+//     chrome.storage.local.set({
+//         "calculationStarted": false
+//     });
+// }
+
+// function bGet() {
+//     chrome.storage.local.get("calculationStarted", value => {
+//         console.log("LocalStorage calculation started");
+//         console.log(value.calculationStarted);
+//     });
+// }
 
 window.onload = function () {
     document.getElementById("startButton").onclick = startCalculation;
+    // document.getElementById("b1").onclick = b1;
+    // document.getElementById("b2").onclick = b2;
+    // document.getElementById("bGet").onclick = bGet;
 }

@@ -27,28 +27,39 @@ chrome.windows.onFocusChanged.addListener(windowId => {
     console.log("IsMainOrderWindow = " + isMainOrderWindow + " finishedParsingOrderDetails = " + finishedParsingOrderDetails + " areThereOrderPagesLeft = " +
         areThereOrderPagesLeft);
 
-    if (windowId == orderWindowId &&
-        finishedParsingOrderDetails &&
-        currentOrderPage < orderPagesLinks.length) {
-        finishedParsingOrderDetails = false;
-        console.log("Opening page at index " + currentOrderPage);
-        CreateNewWindow(orderPagesLinks[currentOrderPage].href);
-        currentOrderPage++;
-    } else if (windowId == orderWindowId && finishedParsingOrderDetails && currentOrderPage === orderPagesLinks.length) {
-        finishedParsingOrderDetails = false;
-        currentOrderPage = 1;
-        CloseWindow(windowId);
-    }
+    if (windowId != -1) {
+        ifCalculationIsStarted(() => {
+            console.log("LocalStorage calculation started");
 
-    if (windowId != -1 && windowId != orderWindowId && finishedParsingOrderDetails) {
-        console.log("Closing page at index " + currentOrderPage)
-        CloseWindow(windowId);
+            if (windowId == orderWindowId &&
+                finishedParsingOrderDetails &&
+                currentOrderPage < orderPagesLinks.length) {
+                finishedParsingOrderDetails = false;
+                console.log("Opening page at index " + currentOrderPage);
+                CreateNewWindow(orderPagesLinks[currentOrderPage].href);
+                currentOrderPage++;
+                //gone back to order page 1
+            } else if (windowId == orderWindowId && finishedParsingOrderDetails && currentOrderPage === orderPagesLinks.length) {
+                finishedParsingOrderDetails = false;
+                currentOrderPage = 1;
+                CloseWindow(windowId);
+                setValueToLocalStorage("calculationStarted", false);
+            }
+
+            if (windowId != orderWindowId && finishedParsingOrderDetails) {
+                console.log("Closing page at index " + currentOrderPage)
+                CloseWindow(windowId);
+            }
+        });
     }
 })
 
-// chrome.tabs.onActivated.addListener(activeInfo => {
-//     console.log("tabOnActivated " + activeInfo.tabId + " " + activeInfo.windowId);
-// })
+chrome.tabs.onActivated.addListener(activeInfo => {
+    chrome.storage.local.get("calculationStarted", value => {
+        console.log("LocalStorage calculation started");
+        console.log(value.calculationStarted);
+    });
+})
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     let isCurrentPageOrderHistory = IsCurrentPageOrderHistoryPage(tab);
@@ -58,15 +69,16 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         currentWindowId = tab.windowId;
         let responseCallback = undefined;
 
-        if (isCurrentPageOrderHistory) {
-            responseCallback = processOrderHistoryPageDom;
-        } else if (isCurrentPageOrderDetails) {
-            responseCallback = processOrderDetailPageDom;
-        }
+        ifCalculationIsStarted(() => {
+            if (isCurrentPageOrderHistory) {
+                responseCallback = processOrderHistoryPageDom;
+            } else if (isCurrentPageOrderDetails) {
+                responseCallback = processOrderDetailPageDom;
+            }
 
-        injectForegroundScript(() => sendMessage(tab.id, SEND_DOM_MESSAGE, responseCallback));
+            injectForegroundScript(() => sendMessage(tab.id, SEND_DOM_MESSAGE, responseCallback));
+        });
 
-        let orders = Array.from(document.querySelectorAll("#ordersContainer > div")).slice(1);
     }
 });
 
@@ -114,6 +126,27 @@ function processOrderDetailPageDom(domContent) {
         finishedParsingOrderDetails = true;
         CloseAllWindows(openedOrderDetailsWindows);
     }
+}
+
+function ifCalculationIsStarted(callback) {
+    getValueFromLocalStorage("calculationStarted", calculationStarted => {
+        if (calculationStarted) {
+            callback();
+        }
+    })
+}
+
+function getValueFromLocalStorage(key, callback) {
+    chrome.storage.local.get(key, value => {
+        callback(value[key]);
+    })
+}
+
+function setValueToLocalStorage(key, value) {
+    let obj = {};
+    obj[key] = value;
+
+    chrome.storage.local.set(obj);
 }
 
 function GetOrderPagesLinks(doc) {
