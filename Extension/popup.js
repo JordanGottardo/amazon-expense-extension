@@ -1,4 +1,4 @@
-const amazonOrderHistoryUrlBase = "https://www.amazon.it/gp/your-account/order-history?opt=ab&digitalOrders=1&unifiedOrders=1&returnTo=&__mk_it_IT=%C3%85M%C3%85%C5%BD%C3%95%C3%91&orderFilter="
+const amazonOrderHistoryLast3MonthUrl= "https://www.amazon.it/gp/your-account/order-history?ref_=nav_orders_first"
 
 function startCalculation() {
     // window.open(
@@ -7,7 +7,7 @@ function startCalculation() {
     // "height=1000,width=1000");
 
     chrome.windows.create({
-        "url": amazonOrderHistoryUrlBase + "year-2021"
+        "url": amazonOrderHistoryLast3MonthUrl
     });
 
     chrome.storage.local.set({
