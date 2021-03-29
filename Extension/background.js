@@ -28,54 +28,61 @@ let currentOrdersByYearPage = undefined;
 chrome.windows.onFocusChanged.addListener(windowId => {
     console.log("focus changed currentWindow= " + windowId + " orderWindowId= " + orderWindowId + " last3MonthsOrderWindowId = " + last3MonthsOrderWindowId);
 
-    let isMainOrderWindow = windowId == orderWindowId;
-    let areThereOrderPagesLeft = currentOrderPage < orderPagesLinks.length;
+    chrome.tabs.query({
+        active: true,
+        windowId: windowId
+    }, tabs => {
+        let tabUrl = tabs[0].url;
+        console.log("Active tab url is: " + tabs[0].url);
+        let isMainOrderWindow = windowId == orderWindowId;
+        let areThereOrderPagesLeft = currentOrderPage < orderPagesLinks.length;
 
-    console.log("IsMainOrderWindow = " + isMainOrderWindow + 
-    " finishedParsingOrderDetails = " + finishedParsingOrderDetails + 
-    " areThereOrderPagesLeft = " + areThereOrderPagesLeft);
+        console.log("IsMainOrderWindow = " + isMainOrderWindow +
+            " finishedParsingOrderDetails = " + finishedParsingOrderDetails +
+            " areThereOrderPagesLeft = " + areThereOrderPagesLeft +
+            "orderPagesLink = " + orderPagesLinks);
 
-    if (windowId != -1) {
-        ifCalculationIsStarted(() => {
+        if (windowId != -1) {
+            ifCalculationIsStarted(tabUrl, () => {
 
-            if (windowId === last3MonthsOrderWindowId && finishedParsingAllOrderPagesByYear) {// ritorno alla pagina last3Months e ho finito tutto
-                console.log("Finished everything");
-                setValueToLocalStorage("calculationStarted", false);
-            } 
-            else if (windowId === last3MonthsOrderWindowId && currentOrdersByYearPage < ordersByYearPageUrls.length) { //ritorno alla pagina last3Months e non ho finito
-                console.log("Creating new orderByYears page for index " + currentOrdersByYearPage) + " url " + ordersByYearPageUrls[currentOrdersByYearPage];
-                CreateNewWindowFromExactUrl(ordersByYearPageUrls[currentOrdersByYearPage]);
-                currentOrdersByYearPage++;
-                orderWindowId = undefined;
-                if (currentOrdersByYearPage === ordersByYearPageUrls.length) {
-                    console.log("Finished everything: setting to true");
-                    finishedParsingAllOrderPagesByYear = true;
+                if (windowId === last3MonthsOrderWindowId && finishedParsingAllOrderPagesByYear) { // ritorno alla pagina last3Months e ho finito tutto
+                    console.log("Finished everything");
+                    setValueToLocalStorage("calculationStarted", false);
+                    CloseWindow(windowId);
+                } else if (windowId === last3MonthsOrderWindowId && currentOrdersByYearPage < ordersByYearPageUrls.length) { //ritorno alla pagina last3Months e non ho finito
+                    console.log("Creating new orderByYears page for index " + currentOrdersByYearPage) + " url " + ordersByYearPageUrls[currentOrdersByYearPage];
+                    CreateNewWindowFromExactUrl(ordersByYearPageUrls[currentOrdersByYearPage]);
+                    currentOrdersByYearPage++;
+                    orderWindowId = undefined;
+                    if (currentOrdersByYearPage === ordersByYearPageUrls.length) {
+                        console.log("Finished everything: setting to true");
+                        finishedParsingAllOrderPagesByYear = true;
+                    }
+                } else if (windowId === orderWindowId &&
+                    finishedParsingOrderDetails &&
+                    currentOrderPage < orderPagesLinks.length) { // ritorno alla pagina di un singolo anno e ho ancora pagine da aprire
+                    console.log("ritorno alla pagina di un singolo anno e ho ancora pagine da aprire");
+                    finishedParsingOrderDetails = false;
+                    console.log("Opening page at index " + currentOrderPage);
+                    CreateNewWindow(orderPagesLinks[currentOrderPage].href);
+                    currentOrderPage++;
+
+                } else if (windowId == orderWindowId && finishedParsingOrderDetails && (!orderPagesLinks || orderPagesLinks.length === 0 || currentOrderPage === orderPagesLinks.length)) { // // ritorno alla pagina di un singolo anno e ho finito le pagine
+                    console.log("ritorno alla pagina di un singolo anno e ho finito le pagine");
+                    finishedParsingOrderDetails = false;
+                    currentOrderPage = 1;
+                    CloseWindow(windowId);
+
                 }
-            }
-            else if (windowId === orderWindowId &&
-                finishedParsingOrderDetails &&
-                currentOrderPage < orderPagesLinks.length) { // ritorno alla pagina di un singolo anno e ho ancora pagine da aprire
-                console.log("ritorno alla pagina di un singolo anno e ho ancora pagine da aprire");
-                finishedParsingOrderDetails = false;
-                console.log("Opening page at index " + currentOrderPage);
-                CreateNewWindow(orderPagesLinks[currentOrderPage].href);
-                currentOrderPage++;
-                
-            } else if (windowId == orderWindowId && finishedParsingOrderDetails && currentOrderPage === orderPagesLinks.length) { // // ritorno alla pagina di un singolo anno e ho finito le pagine
-                console.log("ritorno alla pagina di un singolo anno e ho finito le pagine");
-                finishedParsingOrderDetails = false;
-                currentOrderPage = 1;
-                CloseWindow(windowId);
-                
-            }
 
-            if (windowId != orderWindowId && finishedParsingOrderDetails) { // sono su una pagina di dettaglio ordine e ho finito la pagina di un anno
-                console.log("Closing page at index " + currentOrderPage)
-                CloseWindow(windowId);
-            }
-        });
-    }
-})
+                if (windowId != orderWindowId && finishedParsingOrderDetails) { // sono su una pagina di dettaglio ordine e ho finito la pagina di un anno
+                    console.log("Closing page at index " + currentOrderPage)
+                    CloseWindow(windowId);
+                }
+            });
+        }
+    })
+});
 
 // chrome.tabs.onActivated.addListener(activeInfo => {
 //     chrome.storage.local.get("calculationStarted", value => {
@@ -85,17 +92,18 @@ chrome.windows.onFocusChanged.addListener(windowId => {
 // })
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    console.log("Tab URL = " + tab.url);
-    let isCurrentPageOrderHistory = IsCurrentPageOrderHistoryPage(tab);
-    let isCurrentPageOrderDetails = AMAZON_ORDER_DETAILS_URL_REGEX.test(tab.url)
-    let isCurrentPageOrderHistoryLast3Month = AMAZON_ORDER_HISTORY_LAST_3_MONTH_URL_REGEX.test(tab.url)
-    let isCurrentPageOrderSummary = AMAZON_ORDER_SUMMARY_URL_REGEX.test(tab.url)
-    if ((isCurrentPageOrderHistory || isCurrentPageOrderDetails || isCurrentPageOrderHistoryLast3Month || isCurrentPageOrderSummary) &&
-        changeInfo.status === "complete") {
-        currentWindowId = tab.windowId;
 
-        console.log("onUpdated");
-        ifCalculationIsStarted(() => {
+    ifCalculationIsStarted(tab.url, () => {
+        console.log("Tab URL = " + tab.url);
+        let isCurrentPageOrderHistory = IsCurrentPageOrderHistoryPage(tab.url);
+        let isCurrentPageOrderDetails = IsCurrentPageOrderDetailsPage(tab.url);
+        let isCurrentPageOrderHistoryLast3Month = IsCurrentPageLast3MonthsOrderPage(tab.url);
+        let isCurrentPageOrderSummary = IsCurrentPageOrderSummaryPage(tab.url);
+        if ((isCurrentPageOrderHistory || isCurrentPageOrderDetails || isCurrentPageOrderHistoryLast3Month || isCurrentPageOrderSummary) &&
+            changeInfo.status === "complete") {
+            currentWindowId = tab.windowId;
+
+            console.log("onUpdated");
             if (isCurrentPageOrderHistoryLast3Month) {
                 console.log("In last 3 month page: initializing order years urls");
                 initializeOrdersByYearUrls();
@@ -110,9 +118,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                 }
                 injectForegroundScript(() => sendMessage(tab.id, SEND_DOM_MESSAGE, responseCallback));
             }
-        });
-
-    }
+        }
+    });
 });
 
 function initializeOrdersByYearUrls() {
@@ -137,8 +144,13 @@ function processOrderHistoryPageDom(domContent) {
         currentOrderPage = 1;
     }
 
-    CreateNewOrderDetailsWindow(orderDetailsLinks[0]);
-    parsedOrderDetailsLinkCount = 1;
+    if (orderDetailsLinks.length === 0) {
+        CloseWindow(currentWindowId);
+        finishedParsingOrderDetails = true;
+    } else {
+        CreateNewOrderDetailsWindow(orderDetailsLinks[0]);
+        parsedOrderDetailsLinkCount = 1;
+    }
 }
 
 function processOrderDetailPageDom(domContent) {
@@ -172,12 +184,25 @@ function processOrderDetailPageDom(domContent) {
     }
 }
 
-function ifCalculationIsStarted(callback) {
+function ifCalculationIsStarted(currentUrl, callback) {
+    if (!isCurrentUrlAmazon(currentUrl)) {
+        console.log("CUrrent page is not amazon");
+        return;
+    }
+
     getValueFromLocalStorage("calculationStarted", calculationStarted => {
         if (calculationStarted) {
             callback();
         }
     })
+}
+
+function isCurrentUrlAmazon(currentUrl) {
+    return IsCurrentPageOrderHistoryPage(currentUrl) ||
+        IsCurrentPageOrderDetailsPage(currentUrl) ||
+        IsCurrentPageLast3MonthsOrderPage(currentUrl) ||
+        IsCurrentPageOrderSummaryPage(currentUrl);
+
 }
 
 function getValueFromLocalStorage(key, callback) {
@@ -200,8 +225,20 @@ function GetOrderPagesLinks(doc) {
     return pagesElements;
 }
 
-function IsCurrentPageOrderHistoryPage(tab) {
-    return AMAZON_ORDER_HISTORY_URL_REGEX.test(tab.url);
+function IsCurrentPageOrderHistoryPage(url) {
+    return AMAZON_ORDER_HISTORY_URL_REGEX.test(url);
+}
+
+function IsCurrentPageOrderDetailsPage(url) {
+    return AMAZON_ORDER_DETAILS_URL_REGEX.test(url);
+}
+
+function IsCurrentPageLast3MonthsOrderPage(url) {
+    return AMAZON_ORDER_HISTORY_LAST_3_MONTH_URL_REGEX.test(url);
+}
+
+function IsCurrentPageOrderSummaryPage(url) {
+    return AMAZON_ORDER_SUMMARY_URL_REGEX.test(url);
 }
 
 function CreateNewOrderDetailsWindow(link) {
@@ -259,6 +296,7 @@ function GetDocumentFromDomContent(domContent) {
 }
 
 function ToUrl(wrongBaseUriUrl) {
+    console.log("WrongBaseUrl= " + wrongBaseUriUrl);
     return ORDER_URL_REGEX.exec(wrongBaseUriUrl)[0];
 }
 
