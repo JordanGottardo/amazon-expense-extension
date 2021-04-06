@@ -122,11 +122,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 function initializeOrdersByYearUrls() {
 
-    let currentYear = new Date().getFullYear();
-    // let currentYear = 2017;
+    // let currentYear = new Date().getFullYear();
+    let currentYear = 2017;
 
-    for (let year = currentYear; year < 2021; year--) {
-    // for (let year = currentYear; year >= 2016; year--) {
+    // for (let year = currentYear; year < 2021; year--) {
+    for (let year = currentYear; year >= 2016; year--) {
         ordersByYearPageUrls.push({
             year: year.toString(),
             url: AMAZON_ORDER_PAGE_BY_YEAR_URL_BASE + year
@@ -170,9 +170,8 @@ function processOrderDetailPageDom(domContent) {
 
     let totalValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfTotalRow)
     let buonoRegaloValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfImportoBuonoRegalo)
-    let scontiApplicatiValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfScontiApplicati)
     let totaleRimborsoValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfTotaleRimborso)
-    let totalOrderValue = totalValue + buonoRegaloValue - scontiApplicatiValue - totaleRimborsoValue;
+    let totalOrderValue = totalValue + buonoRegaloValue - totaleRimborsoValue;
     addOrSetValueToLocalStorage(currentlyProcessedYear, totalOrderValue, () => {
         console.log("TotalOrderValue = " + totalOrderValue);
         if (parsedOrderDetailsLinkCount < orderDetailsLinks.length) {
