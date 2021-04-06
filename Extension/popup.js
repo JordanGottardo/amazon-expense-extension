@@ -13,8 +13,8 @@ function startCalculation() {
         }, () => {
             chrome.storage.local.get(null, storage => {
                 console.log("initial storage");
-                console.log(storage);   
-               });
+                console.log(storage);
+            });
             chrome.windows.create({
                 "url": amazonOrderHistoryLast3MonthUrl
             });
@@ -23,16 +23,21 @@ function startCalculation() {
 }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-
     if (areaName === "local" && changes.calculationStarted && changes.calculationStarted.newValue === false) {
-        console.log("Starting to print graph");
-        chrome.storage.local.get(null, value => {
-            console.log("LocalStorage value");
-            console.log(value);
-        })
+        printGraph();
     }
-
 });
+
+
+function printGraph() {
+    console.log("Starting to print graph");
+    chrome.storage.local.get(null, value => {
+        console.log("LocalStorage value");
+        console.log(value);
+
+        console.log(d3.select("#graph"));
+    });
+}
 
 // function b1() {
 //     chrome.storage.local.set({
@@ -55,7 +60,40 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
 window.onload = function () {
     document.getElementById("startButton").onclick = startCalculation;
-    // document.getElementById("b1").onclick = b1;
-    // document.getElementById("b2").onclick = b2;
-    // document.getElementById("bGet").onclick = bGet;
+    
+    // basic example: to be removed
+    var data = [5, 10, 12];
+    var width = 200,
+        scaleFactor = 10,
+        barHeight = 20;
+
+    var graph = d3.select("body")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", barHeight * data.length);
+
+    var bar = graph.selectAll("g")
+        .data(data)
+        .enter()
+        .append("g")
+        .attr("transform", function (d, i) {
+            return "translate(0," + i * barHeight + ")";
+        });
+
+    bar.append("rect")
+        .attr("width", function (d) {
+            return d * scaleFactor;
+        })
+        .attr("height", barHeight - 1);
+
+    bar.append("text")
+        .attr("x", function (d) {
+            return (d * scaleFactor);
+        })
+        .attr("y", barHeight / 2)
+        .attr("dy", ".35em")
+        .text(function (d) {
+            return d;
+        });
+
 }
