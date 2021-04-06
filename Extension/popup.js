@@ -22,6 +22,18 @@ function startCalculation() {
     });
 }
 
+chrome.storage.onChanged.addListener((changes, areaName) => {
+
+    if (areaName === "local" && changes.calculationStarted && changes.calculationStarted.newValue === false) {
+        console.log("Starting to print graph");
+        chrome.storage.local.get(null, value => {
+            console.log("LocalStorage value");
+            console.log(value);
+        })
+    }
+
+});
+
 // function b1() {
 //     chrome.storage.local.set({
 //         "calculationStarted": true
