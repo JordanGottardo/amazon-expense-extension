@@ -7,13 +7,14 @@ function startCalculation() {
     // "AMAZON-2021",
     // "height=1000,width=1000");
 
-    let localStorageKeysToRemove = [...getYearsKeys(), calculationStartedKey];
-    console.log(localStorageKeysToRemove);
-
-    chrome.storage.local.remove(localStorageKeysToRemove, () => {
+    chrome.storage.local.clear(() => {
         chrome.storage.local.set({
             "calculationStarted": true
         }, () => {
+            chrome.storage.local.get(null, storage => {
+                console.log("initial storage");
+                console.log(storage);   
+               });
             chrome.windows.create({
                 "url": amazonOrderHistoryLast3MonthUrl
             });
@@ -45,15 +46,4 @@ window.onload = function () {
     // document.getElementById("b1").onclick = b1;
     // document.getElementById("b2").onclick = b2;
     // document.getElementById("bGet").onclick = bGet;
-}
-
-function getYearsKeys() {
-    let yearsKeys = [];
-    let currentYear = new Date().getFullYear();
-
-    for (let year = currentYear; year >= 2010; year--) {
-        yearsKeys.push(year.toString());
-    }
-
-    return yearsKeys;
 }
