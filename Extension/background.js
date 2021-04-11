@@ -68,9 +68,7 @@ chrome.windows.onFocusChanged.addListener(windowId => {
                     finishedParsingOrderDetails = false;
                     currentOrderPage = 1;
                     CloseWindow(windowId);
-                }
-
-                if (windowId != orderWindowId && finishedParsingOrderDetails) { // sono su una pagina di dettaglio ordine e ho finito la pagina di un anno
+                } else if (windowId != orderWindowId && finishedParsingOrderDetails) { // sono su una pagina di dettaglio ordine e ho finito la pagina di un anno
                     console.log("Closing page at index " + currentOrderPage)
                     CloseWindow(windowId);
                 }
@@ -122,11 +120,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 function initializeOrdersByYearUrls() {
 
-    // let currentYear = new Date().getFullYear();
-    let currentYear = 2017;
+    let currentYear = new Date().getFullYear();
+    // let currentYear = 2012;
 
-    // for (let year = currentYear; year < 2021; year--) {
-    for (let year = currentYear; year >= 2016; year--) {
+    // for (let year = currentYear; year >= 2010; year--) {
+    for (let year = currentYear; year >= 2010; year--) {
         ordersByYearPageUrls.push({
             year: year.toString(),
             url: AMAZON_ORDER_PAGE_BY_YEAR_URL_BASE + year
@@ -148,11 +146,11 @@ function processOrderHistoryPageDom(domContent) {
     }
 
     if (orderDetailsLinks.length === 0) {
-        CloseWindow(currentWindowId);
         finishedParsingOrderDetails = true;
+        CloseWindow(currentWindowId);
     } else {
-        CreateNewOrderDetailsWindow(orderDetailsLinks[0]);
         parsedOrderDetailsLinkCount = 1;
+        CreateNewOrderDetailsWindow(orderDetailsLinks[0]);
     }
 }
 
