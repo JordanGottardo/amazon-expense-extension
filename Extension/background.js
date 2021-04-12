@@ -126,8 +126,8 @@ function initializeOrdersByYearUrls() {
     // for (let year = currentYear; year >= 2010; year--) {
     for (let year = currentYear; year >= 2010; year--) {
         ordersByYearPageUrls.push({
-            year: year.toString(),
-            url: AMAZON_ORDER_PAGE_BY_YEAR_URL_BASE + year
+            year: year,
+            url: AMAZON_ORDER_PAGE_BY_YEAR_URL_BASE + year.toString()
         });
         currentOrdersByYearPageIndex = 0;
     }

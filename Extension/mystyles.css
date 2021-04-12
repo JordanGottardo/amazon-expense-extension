@@ -27,3 +27,16 @@
     top: 30%;
     left: 40%;
 }
+
+body {
+    height: 800px;
+    width: 800px;
+}
+
+.bar {
+    fill: steelblue;
+}
+
+.highlight {
+    fill: orange;
+}
