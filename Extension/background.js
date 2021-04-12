@@ -9,6 +9,7 @@ const AMAZON_ORDER_SUMMARY_URL_REGEX = /^https:\/\/www.amazon.it\/gp\/digital\/y
 const ORDER_URL_REGEX = /\/gp.*/;
 const CURRENCY_REGEX = /\d*,\d*/g;
 const SEND_DOM_MESSAGE = "SendDomToBackground";
+const AMAZON_EXPENSES_OBJECT_KEY = "amazonExpenses";
 
 let activeTabId = 0;
 let orderDetailsLinks;
@@ -120,11 +121,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 function initializeOrdersByYearUrls() {
 
-    let currentYear = new Date().getFullYear();
-    // let currentYear = 2012;
+    // let currentYear = new Date().getFullYear();
+    let currentYear = 2021;
 
     // for (let year = currentYear; year >= 2010; year--) {
-    for (let year = currentYear; year >= 2010; year--) {
+    for (let year = currentYear; year >= 2021; year--) {
         ordersByYearPageUrls.push({
             year: year,
             url: AMAZON_ORDER_PAGE_BY_YEAR_URL_BASE + year.toString()
@@ -170,7 +171,9 @@ function processOrderDetailPageDom(domContent) {
     let buonoRegaloValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfImportoBuonoRegalo)
     let totaleRimborsoValue = GetValueOfElementAtIndex(orderSummaryArray, indexOfTotaleRimborso)
     let totalOrderValue = totalValue + buonoRegaloValue - totaleRimborsoValue;
-    addOrSetValueToLocalStorage(currentlyProcessedYear, totalOrderValue, () => {
+    console.log(currentlyProcessedYear);
+    console.log(totalOrderValue);
+    addOrderValuesToLocalStorage(currentlyProcessedYear, totalOrderValue, totaleRimborsoValue, () => {
         console.log("TotalOrderValue = " + totalOrderValue);
         if (parsedOrderDetailsLinkCount < orderDetailsLinks.length) {
             let nextUrl = orderDetailsLinks[parsedOrderDetailsLinkCount];
@@ -228,29 +231,23 @@ function setValueToLocalStorage(key, value, callback) {
     chrome.storage.local.set(obj, callback);
 }
 
-function addOrSetValueToLocalStorage(key, value, callback) {
+
+function addOrderValuesToLocalStorage(year, orderValue, reimbursementValue, callback) {
     // console.log("addOrSetValueToLocalStorage key = " + key + " value = " + value);
-    getValueFromLocalStorage(key, oldVal => {
-        // console.log("GetValueFromLocalStorage oldValue= " + oldVal);
-        if (!oldVal) {
-            console.log("Oldvalue not found, setting " + key + " to " + value);
-            setValueToLocalStorage(key, value, () => {
-                chrome.storage.local.get(null, value => {
-                    console.log("LocalStorage all= ")
-                    console.log(value);
-                    callback();
-                })
+    getValueFromLocalStorage(AMAZON_EXPENSES_OBJECT_KEY, oldVal => {
+        oldVal[year].totalExpense = oldVal[year].totalExpense + orderValue;
+        oldVal[year].reimbursement = oldVal[year].reimbursement + reimbursementValue;
+
+        // console.log("Oldvalue found , adding to " + key + " oldVal= " + oldVal + " + value= " + value);
+
+        setValueToLocalStorage(AMAZON_EXPENSES_OBJECT_KEY, oldVal, () => {
+            chrome.storage.local.get(null, value => {
+                console.log("LocalStorage all= ");
+                console.log(value);
+                callback();
             });
-        } else {
-            console.log("Oldvalue found , adding to " + key + " oldVal= " + oldVal + " + value= " + value);
-            setValueToLocalStorage(key, oldVal + value, () => {
-                chrome.storage.local.get(null, value => {
-                    console.log("LocalStorage all= ");
-                    console.log(value);
-                    callback();
-                });
-            });
-        }
+        });
+
     });
 }
 

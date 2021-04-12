@@ -12,11 +12,13 @@ function startCalculation() {
     // amazonOrderHistoryUrlBase + "year-2021",
     // "AMAZON-2021",
     // "height=1000,width=1000");
+    let localStorageInitialValue = {
+        "amazonExpenses": getYearlyExpensesStartingValues(),
+        "calculationStarted": true
+    };
 
     chrome.storage.local.clear(() => {
-        chrome.storage.local.set({
-            "calculationStarted": true
-        }, () => {
+        chrome.storage.local.set(localStorageInitialValue, () => {
             chrome.storage.local.get(null, storage => {
                 console.log("initial storage");
                 console.log(storage);
@@ -34,7 +36,6 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     }
 });
 
-
 function printGraph() {
     console.log("Starting to print graph");
     chrome.storage.local.get(null, value => {
@@ -43,6 +44,21 @@ function printGraph() {
 
         console.log(d3.select("#graph"));
     });
+}
+
+function getYearlyExpensesStartingValues() {
+    let currentYear = new Date().getFullYear();
+    let yearlyExpenses = {};
+
+    for (let year = currentYear; year >= 2010; year--) {
+        yearlyExpenses[year] = {
+            "year": year,
+            "totalExpense": 0,
+            "reimbursement": 0
+        };
+    }
+
+    return yearlyExpenses;
 }
 
 // function b1() {
