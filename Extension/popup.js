@@ -6,6 +6,7 @@ let height;
 let width;
 let g;
 const margin = 200;
+const AMAZON_EXPENSES_KEY = "amazonExpenses";
 
 function startCalculation() {
     // window.open(
@@ -32,17 +33,24 @@ function startCalculation() {
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === "local" && changes.calculationStarted && changes.calculationStarted.newValue === false) {
-        printGraph();
+        parseAmazonExpensesAndPrintChart();
     }
 });
 
-function printGraph() {
+function parseAmazonExpensesAndPrintChart() {
     console.log("Starting to print graph");
-    chrome.storage.local.get(null, value => {
+    chrome.storage.local.get("amazonExpenses", amazonExpenses => {
         console.log("LocalStorage value");
-        console.log(value);
+        console.log(amazonExpenses);
+        let amazonExpensesObject = amazonExpenses[AMAZON_EXPENSES_KEY];
 
-        console.log(d3.select("#graph"));
+        let years = Object.getOwnPropertyNames(amazonExpensesObject);
+        let values = [];
+        years.forEach(year => {
+            values.push(amazonExpensesObject[year].totalExpense);
+        });
+
+        printExpensesBarChart(years, values)
     });
 }
 
@@ -82,12 +90,14 @@ function getYearlyExpensesStartingValues() {
 
 window.onload = function () {
     document.getElementById("startButton").onclick = startCalculation;
+}
 
+function printExpensesBarChart(years, values) {
     // basic example: to be removed
-    var values = [28.63, 1026.05, 366.58, 634.7700000000001, 564.12, 310.22, 1024.82,
-        3408.799999999998, 1339.9400000000005, 1154.9900000000002
-    ];
-    var years = [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021];
+    // var values = [28.63, 1026.05, 366.58, 634.7700000000001, 564.12, 310.22, 1024.82,
+    //     3408.799999999998, 1339.9400000000005, 1154.9900000000002
+    // ];
+    // var years = [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021];
 
     let data = values.map((value, index) => {
         return {
@@ -150,54 +160,48 @@ window.onload = function () {
         .attr("height", d => {
             return height - yScale(d.value);
         });
-
-
-
-    // var data = [100, 400, 300, 900, 850, 1000];
-
-    // var scale = d3.scaleLinear()
-    //     .domain([d3.min(data), d3.max(data)])
-    //     .range([50, 400]);
-
-    //     var width = 500,
-    //     barHeight = 20,
-    //     margin = 1;
-
-    // var graph = d3.select("body")
-    //     .append("svg")
-    //     .attr("width", width)
-    //     .attr("height", barHeight * data.length);
-
-    // var bar = graph.selectAll("g")
-    //     .data(data)
-    //     .enter()
-    //     .append("g")
-    //     .attr("transform", function (d, i) {
-    //         return "translate(0," + i * barHeight + ")";
-    //     });
-
-    // bar.append("rect")
-    //     .attr("width", function (d) {
-    //         return scale(d);
-    //     })
-    //     .attr("height", barHeight - margin)
-
-    // bar.append("text")
-    //     .attr("x", function (d) {
-    //         return (scale(d));
-    //     })
-    //     .attr("y", barHeight / 2)
-    //     .attr("dy", ".35em")
-    //     .text(function (d) {
-    //         return d;
-    //     });
-
 }
 
+// var data = [100, 400, 300, 900, 850, 1000];
+
+// var scale = d3.scaleLinear()
+//     .domain([d3.min(data), d3.max(data)])
+//     .range([50, 400]);
+
+//     var width = 500,
+//     barHeight = 20,
+//     margin = 1;
+
+// var graph = d3.select("body")
+//     .append("svg")
+//     .attr("width", width)
+//     .attr("height", barHeight * data.length);
+
+// var bar = graph.selectAll("g")
+//     .data(data)
+//     .enter()
+//     .append("g")
+//     .attr("transform", function (d, i) {
+//         return "translate(0," + i * barHeight + ")";
+//     });
+
+// bar.append("rect")
+//     .attr("width", function (d) {
+//         return scale(d);
+//     })
+//     .attr("height", barHeight - margin)
+
+// bar.append("text")
+//     .attr("x", function (d) {
+//         return (scale(d));
+//     })
+//     .attr("y", barHeight / 2)
+//     .attr("dy", ".35em")
+//     .text(function (d) {
+//         return d;
+//     });
+
 function onMouseOver(d, i) {
-    console.log(d);
-    console.log(d.value)
-    console.log(i);
     d3.select(this).attr('class', 'highlight');
     d3.select(this)
         .transition()

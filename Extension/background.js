@@ -121,11 +121,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 function initializeOrdersByYearUrls() {
 
-    // let currentYear = new Date().getFullYear();
-    let currentYear = 2021;
+    let currentYear = new Date().getFullYear();
+    // let currentYear = 2016;
 
-    // for (let year = currentYear; year >= 2010; year--) {
-    for (let year = currentYear; year >= 2021; year--) {
+    for (let year = currentYear; year >= 2010; year--) {
+    // for (let year = currentYear; year >= 2016; year--) {
         ordersByYearPageUrls.push({
             year: year,
             url: AMAZON_ORDER_PAGE_BY_YEAR_URL_BASE + year.toString()
