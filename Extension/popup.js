@@ -10,10 +10,6 @@ const margin = 200;
 const AMAZON_EXPENSES_KEY = "amazonExpenses";
 
 function startCalculation() {
-    // window.open(
-    // amazonOrderHistoryUrlBase + "year-2021",
-    // "AMAZON-2021",
-    // "height=1000,width=1000");
     let localStorageInitialValue = {
         "amazonExpenses": getYearlyExpensesStartingValues(),
         "calculationStarted": true
@@ -32,6 +28,11 @@ function startCalculation() {
     });
 }
 
+function resetLocalStorage() {
+    console.log("resetting storage");
+    chrome.storage.local.clear();
+}
+
 chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === "local" && changes.calculationStarted && changes.calculationStarted.newValue === false) {
         parseAmazonExpensesAndPrintChart();
@@ -40,6 +41,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
 function parseAmazonExpensesAndPrintChart() {
     console.log("Starting to print graph");
+    hideIncompleteParsingError();
     chrome.storage.local.get("amazonExpenses", amazonExpenses => {
         console.log("LocalStorage value");
         console.log(amazonExpenses);
@@ -74,19 +76,28 @@ function getYearlyExpensesStartingValues() {
 
 window.onload = function () {
     document.getElementById("startButton").onclick = startCalculation;
+    document.getElementById("resetButton").onclick = resetLocalStorage;
 
-    printExpensesBarChart(null, null, null);
+    chrome.storage.local.get("amazonExpenses", amazonExpenses => {
+        console.log("aaa");
+        console.log(amazonExpenses)
+        if (amazonExpenses["amazonExpenses"] && !amazonExpenses.calculationStarted) {
+            parseAmazonExpensesAndPrintChart();
+        } else {
+            showIncompleteParsingError();
+        }
+    });
 }
 
 function printExpensesBarChart(years, totalExpenses, reimbursements) {
     // basic example: to be removed
-    totalExpenses = [28.63, 1026.05, 366.58, 634.7700000000001, 564.12, 310.22, 1024.82,
-        3408.799999999998, 1339.9400000000005, 1154.9900000000002
-    ];
-    years = [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021];
-    reimbursements = [1200, 1026.05, 366.58, 634.7700000000001, 564.12, 800, 1024.82,
-        3408.799999999998, 1339.9400000000005, 1154.9900000000002
-    ];
+    // totalExpenses = [28.63, 1026.05, 366.58, 634.7700000000001, 564.12, 310.22, 1024.82,
+    //     3408.799999999998, 1339.9400000000005, 1154.9900000000002
+    // ];
+    // years = [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021];
+    // reimbursements = [1200, 1026.05, 366.58, 634.7700000000001, 564.12, 800, 1024.82,
+    //     3408.799999999998, 1339.9400000000005, 1154.9900000000002
+    // ];
     keys = ["totalExpense", "reimbursement"];
     legendText = {
         totalExpense: "Spesa tot.",
@@ -254,4 +265,12 @@ function getWidthOfElementWithClass(className) {
 
 function roundToTwoDecimal(num) {
     return Math.round(num * 100) / 100
+}
+
+function showIncompleteParsingError() {
+    document.querySelector("#parsingNotCompleted").classList.remove("hidden");
+}
+
+function hideIncompleteParsingError() {
+    document.querySelector("#parsingNotCompleted").classList.add("hidden");
 }

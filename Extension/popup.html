@@ -12,10 +12,14 @@
 </head>
 
 <body>
-    <h1>I'm the popup</h1>
+    <h1>Calcolo storico spese Amazon</h1>
     <div id="graph"></div>
     <div>
-        <button id="startButton">Click Me!</button>
+        <button id="startButton">Calcola spese</button>
+        <button id="resetButton">Pulisci storico</button>
+    </div>
+    <div class="hidden" id="parsingNotCompleted">
+        <p>Calcolo delle spese non ancora eseguito. Avviarlo dal pulsante per visualizzare i risultati</p>
     </div>
     <svg width="600" height="500"></svg>
     <!-- <button id="b1">Set true</button> 

@@ -31,8 +31,7 @@ body {
     width: 800px;
 }
 
-.bar {
-}
+.bar {}
 
 .barReimbursement {
     fill: red;
@@ -45,4 +44,8 @@ body {
 .axisText {
     stroke: black;
     font-size: 13px;
+}
+
+.hidden {
+    display: none;
 }
