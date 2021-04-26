@@ -5,6 +5,7 @@ let yScale;
 let height;
 let width;
 let g;
+let keys;
 const margin = 200;
 const AMAZON_EXPENSES_KEY = "amazonExpenses";
 
@@ -45,12 +46,14 @@ function parseAmazonExpensesAndPrintChart() {
         let amazonExpensesObject = amazonExpenses[AMAZON_EXPENSES_KEY];
 
         let years = Object.getOwnPropertyNames(amazonExpensesObject);
-        let values = [];
+        let totalExpenses = [];
+        let reimbursements = [];
         years.forEach(year => {
-            values.push(amazonExpensesObject[year].totalExpense);
+            totalExpenses.push(amazonExpensesObject[year].totalExpense);
+            reimbursements.push(amazonExpensesObject[year].reimbursement);
         });
 
-        printExpensesBarChart(years, values)
+        printExpensesBarChart(years, totalExpenses, reimbursements)
     });
 }
 
@@ -69,161 +72,159 @@ function getYearlyExpensesStartingValues() {
     return yearlyExpenses;
 }
 
-// function b1() {
-//     chrome.storage.local.set({
-//         "calculationStarted": true
-//     });
-// }
-
-// function b2() {
-//     chrome.storage.local.set({
-//         "calculationStarted": false
-//     });
-// }
-
-// function bGet() {
-//     chrome.storage.local.get("calculationStarted", value => {
-//         console.log("LocalStorage calculation started");
-//         console.log(value.calculationStarted);
-//     });
-// }
-
 window.onload = function () {
     document.getElementById("startButton").onclick = startCalculation;
+
+    printExpensesBarChart(null, null, null);
 }
 
-function printExpensesBarChart(years, values) {
+function printExpensesBarChart(years, totalExpenses, reimbursements) {
     // basic example: to be removed
-    // var values = [28.63, 1026.05, 366.58, 634.7700000000001, 564.12, 310.22, 1024.82,
-    //     3408.799999999998, 1339.9400000000005, 1154.9900000000002
-    // ];
-    // var years = [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021];
+    totalExpenses = [28.63, 1026.05, 366.58, 634.7700000000001, 564.12, 310.22, 1024.82,
+        3408.799999999998, 1339.9400000000005, 1154.9900000000002
+    ];
+    years = [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021];
+    reimbursements = [1200, 1026.05, 366.58, 634.7700000000001, 564.12, 800, 1024.82,
+        3408.799999999998, 1339.9400000000005, 1154.9900000000002
+    ];
+    keys = ["totalExpense", "reimbursement"];
+    legendText = {
+        totalExpense: "Spesa tot.",
+        reimbursement: "Rimborso"
+    }
 
-    let data = values.map((value, index) => {
+    let data = totalExpenses.map((totalExpense, index) => {
         return {
             year: years[index],
-            value: value
+            totalExpense: roundToTwoDecimal(totalExpense),
+            reimbursement: roundToTwoDecimal(reimbursements[index])
         }
     });
 
     var svg = d3.select("svg");
-    width = svg.attr("width") - margin,
-        height = svg.attr("height") - margin;
 
-    xScale = d3.scaleBand().range([0, width]).padding(0.4);
-    yScale = d3.scaleLinear().range([height, 0]);
-    xScale.domain(data.map(d => {
-        return d.year;
-    }));
-    yScale.domain([0, d3.max(data, d => {
-        return d.value;
-    })]);
+    let totalMargin = 200;
+    width = svg.attr("width") - totalMargin;
+    height = svg.attr("height") - totalMargin;
+
+    xScale = d3.scaleBand()
+        .domain(data.map(d => d.year))
+        .range([0, width])
+        .paddingInner(0.1)
+
+    let x1Scale = d3.scaleBand()
+        .domain(keys)
+        .rangeRound([0, xScale.bandwidth()])
+        .padding(0.05)
+
+    yScale = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d3.max(keys, key => d[key]))]).nice()
+        .range([height, 0]);
+
+    let color = d3.scaleOrdinal()
+        .range(["#98abc5", "#8a89a6"]);
 
     g = svg.append("g")
-        .attr("transform", "translate(" + 100 + "," + 100 + ")");
+        .attr("transform", "translate(" + 80 + "," + 50 + ")");
 
     g.append("g")
-        .attr("transform", "translate(0," + height + ")")
-        .call(d3.axisBottom(xScale));
-
-    g.append("g")
-        .call(d3.axisLeft(yScale).tickFormat(d => {
-            return "€" + d;
-        }).ticks(10))
-        .append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("y", 6)
-        .attr("dy", "-5.1em")
-        .attr("text-anchor", "end")
-        .attr("stroke", "black")
-        .text("Stock Price");
-
-    g.selectAll(".bar")
+        .selectAll("g")
         .data(data)
-        .enter().append("rect")
+        .join("g")
+        .attr("transform", d => `translate(${xScale(d.year)},0)`)
+        .selectAll("rect")
+        .data(d => keys.map(key => ({
+            key,
+            year: d.year,
+            totalExpense: d[key]
+        })))
+        .join("rect")
         .attr("class", "bar")
         .on("mouseover", onMouseOver)
         .on("mouseout", onMouseOut)
-        .attr("x", d => {
-            return xScale(d.year);
-        })
-        .attr("y", d => {
-            return yScale(d.value);
-        })
-        .attr("width", xScale.bandwidth())
+        .attr("x", d => x1Scale(d.key))
+        .attr("y", d => yScale(d.totalExpense))
+        .attr("width", x1Scale.bandwidth())
         .transition()
         .ease(d3.easeLinear)
         .duration(400)
         .delay((d, i) => {
             return i * 50;
         })
-        .attr("height", d => {
-            return height - yScale(d.value);
-        });
+        .attr("height", d => yScale(0) - yScale(d.totalExpense))
+        .attr("fill", d => color(d.key));
+
+    g.append("g")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(xScale))
+        .append("text")
+        .attr("class", "axisText")
+        .attr("x", 200)
+        .attr("dy", "3em")
+        .attr("text-anchor", "middle")
+        .text("Anno");;
+
+    g.append("g")
+        .call(d3.axisLeft(yScale).tickFormat(d => {
+            return "€" + d3.format(",")(d).replace(",", ".");
+        }).ticks(10))
+        .append("text")
+        .attr("class", "axisText")
+        .attr("transform", "translate(0, 100) rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", "-5.1em")
+        .attr("text-anchor", "end")
+        .text("Spese / Rimborsi");
+
+    let legendContainer = g.append("g")
+        .attr("transform", `translate(${width + 80},0)`)
+        .attr("text-anchor", "end")
+        .attr("font-family", "sans-serif")
+        .attr("font-size", 10)
+        .selectAll("g")
+        .data(color.domain().slice().reverse())
+        .join("g")
+        .attr("transform", (d, i) => `translate(0,${i * 20})`);
+
+    legendContainer.append("rect")
+        .attr("x", -19)
+        .attr("width", 19)
+        .attr("height", 19)
+        .attr("fill", color);
+
+    legendContainer.append("text")
+        .attr("x", -24)
+        .attr("y", 9.5)
+        .attr("dy", "0.35em")
+        .text(d => legendText[d]);
 }
 
-// var data = [100, 400, 300, 900, 850, 1000];
-
-// var scale = d3.scaleLinear()
-//     .domain([d3.min(data), d3.max(data)])
-//     .range([50, 400]);
-
-//     var width = 500,
-//     barHeight = 20,
-//     margin = 1;
-
-// var graph = d3.select("body")
-//     .append("svg")
-//     .attr("width", width)
-//     .attr("height", barHeight * data.length);
-
-// var bar = graph.selectAll("g")
-//     .data(data)
-//     .enter()
-//     .append("g")
-//     .attr("transform", function (d, i) {
-//         return "translate(0," + i * barHeight + ")";
-//     });
-
-// bar.append("rect")
-//     .attr("width", function (d) {
-//         return scale(d);
-//     })
-//     .attr("height", barHeight - margin)
-
-// bar.append("text")
-//     .attr("x", function (d) {
-//         return (scale(d));
-//     })
-//     .attr("y", barHeight / 2)
-//     .attr("dy", ".35em")
-//     .text(function (d) {
-//         return d;
-//     });
-
 function onMouseOver(d, i) {
+    let indexOfKey = keys.indexOf(i.key);
+    let width = getWidthOfElementWithClass("bar");
+
     d3.select(this).attr('class', 'highlight');
     d3.select(this)
         .transition()
         .duration(400)
-        .attr('width', xScale.bandwidth() + 5)
+        .attr('width', width + 5)
         .attr("y", d => {
-            return yScale(i.value) - 10;
+            return yScale(i.totalExpense) - 10;
         })
         .attr("height", d => {
-            return height - yScale(i.value) + 10;
+            return height - yScale(i.totalExpense) + 10;
         });
 
     g.append("text")
         .attr('class', 'val')
         .attr('x', () => {
-            return xScale(i.year);
+            return xScale(i.year) + width * indexOfKey;
         })
         .attr('y', () => {
-            return yScale(i.value) - 15;
+            return yScale(i.totalExpense) - 15;
         })
         .text(() => {
-            return ['€' + i.value];
+            return ['€' + i.totalExpense];
         });
 }
 
@@ -232,14 +233,25 @@ function onMouseOut(d, i) {
     d3.select(this)
         .transition()
         .duration(400)
-        .attr('width', xScale.bandwidth())
+        .attr('width', getWidthOfElementWithClass("bar"))
         .attr("y", d => {
-            return yScale(i.value);
+            return yScale(i.totalExpense);
         })
         .attr("height", d => {
-            return height - yScale(i.value);
+            return height - yScale(i.totalExpense);
         });
 
     d3.selectAll('.val')
         .remove()
+}
+
+function getWidthOfElementWithClass(className) {
+    return d3.select("." + className)
+        .node()
+        .getBBox()
+        .width;
+}
+
+function roundToTwoDecimal(num) {
+    return Math.round(num * 100) / 100
 }
