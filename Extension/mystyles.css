@@ -49,3 +49,23 @@ body {
 .hidden {
     display: none;
 }
+
+.primaryButton, .primaryButton:hover, .primaryButton:visited {
+    padding: 10px;
+    border-radius: 10px;
+    border-color: #424860;
+    color: white;
+    background: linear-gradient(145deg, #424860, #181a24);
+}
+
+.deleteButton, .deleteButton:hover, .deleteButton:visited {
+    padding: 10px;
+    border-radius: 10px;
+    border-color: #ff0000;
+    color: white;
+    background: linear-gradient(145deg, #ec5151, #ff0000);
+}
+
+#parsingNotCompleted {
+    font-size: 12pt;
+}

@@ -15,13 +15,13 @@
     <h1>Calcolo storico spese Amazon</h1>
     <div id="graph"></div>
     <div>
-        <button id="startButton">Calcola spese</button>
-        <button id="resetButton">Pulisci storico</button>
+        <button id="startButton" class="primaryButton">Calcola spese</button>
+        <button id="resetButton" class="deleteButton">Pulisci storico</button>
     </div>
     <div class="hidden" id="parsingNotCompleted">
-        <p>Calcolo delle spese non ancora eseguito. Avviarlo dal pulsante per visualizzare i risultati</p>
+        <p>Calcolo delle spese non ancora eseguito. Avviarlo dal pulsante "Calcola spese" per visualizzare i risultati</p>
     </div>
-    <svg width="600" height="500"></svg>
+    <svg id="graphContainer" width="600" height="500"></svg>
     <!-- <button id="b1">Set true</button> 
     <button id="b2">Set false</button> 
     <button id="bGet">Get!</button>  -->

@@ -122,7 +122,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 function initializeOrdersByYearUrls() {
 
     // let currentYear = new Date().getFullYear();
-    let currentYear = 2012;
+    let currentYear = 2014;
 
     for (let year = currentYear; year >= 2010; year--) {
     // for (let year = currentYear; year >= 2016; year--) {

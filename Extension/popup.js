@@ -31,6 +31,7 @@ function startCalculation() {
 function resetLocalStorage() {
     console.log("resetting storage");
     chrome.storage.local.clear();
+    document.querySelector("#graphContainer").textContent = "";
 }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
