@@ -10,10 +10,7 @@ const margin = 200;
 const AMAZON_EXPENSES_KEY = "amazonExpenses";
 
 function startCalculation() {
-    let localStorageInitialValue = {
-        "amazonExpenses": getYearlyExpensesStartingValues(),
-        "calculationStarted": true
-    };
+    let localStorageInitialValue = getStorageInitialValue();
 
     chrome.storage.local.clear(() => {
         chrome.storage.local.set(localStorageInitialValue, () => {
@@ -21,17 +18,57 @@ function startCalculation() {
                 console.log("initial storage");
                 console.log(storage);
             });
-            chrome.windows.create({
-                "url": amazonOrderHistoryLast3MonthUrl
-            });
+            openFirstAmazonPage();
         });
     });
 }
 
-function resetLocalStorage() {
+function getStorageInitialValue(calculateOnlyCurrentYear = false) {
+    return {
+        "amazonExpenses": getYearlyExpensesStartingValues(),
+        "calculationStarted": true,
+        "calculateOnlyCurrentYear": calculateOnlyCurrentYear
+    };
+}
+
+function resetAll() {
     console.log("resetting storage");
     chrome.storage.local.clear();
     document.querySelector("#graphContainer").textContent = "";
+    showIncompleteParsingError();
+}
+
+function startCalculationOnlyForCurrentYear() {
+    console.log("startCalculationOnlyForCurrentYear");
+    let currentYear = getCurrentYear();
+    let currentYearStartingValues = {
+        "year": currentYear,
+        "totalExpense": 0,
+        "reimbursement": 0
+    };
+
+    chrome.storage.local.get(null, storage => {
+        console.log("initial storage");
+        console.log(storage);
+        if (storage && !isObjectEmpty(storage)) {
+            console.log(storage);
+            storage.amazonExpenses[currentYear] = currentYearStartingValues;
+            storage.calculationStarted = true;
+            storage.calculateOnlyCurrentYear = true;
+        } else {
+            storage = getStorageInitialValue(true);
+        }
+
+        chrome.storage.local.set(storage, () => {
+            chrome.storage.local.get(null, newStorage => {
+                console.log("final storage");
+                console.log(newStorage);
+                openFirstAmazonPage();
+            })
+        })
+    });
+
+
 }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -60,8 +97,12 @@ function parseAmazonExpensesAndPrintChart() {
     });
 }
 
+function getCurrentYear() {
+    return new Date().getFullYear();
+}
+
 function getYearlyExpensesStartingValues() {
-    let currentYear = new Date().getFullYear();
+    let currentYear = getCurrentYear();
     let yearlyExpenses = {};
 
     for (let year = currentYear; year >= 2010; year--) {
@@ -77,7 +118,8 @@ function getYearlyExpensesStartingValues() {
 
 window.onload = function () {
     document.getElementById("startButton").onclick = startCalculation;
-    document.getElementById("resetButton").onclick = resetLocalStorage;
+    document.getElementById("currentYearButton").onclick = startCalculationOnlyForCurrentYear;
+    document.getElementById("resetButton").onclick = resetAll;
 
     chrome.storage.local.get("amazonExpenses", amazonExpenses => {
         console.log("aaa");
@@ -274,4 +316,14 @@ function showIncompleteParsingError() {
 
 function hideIncompleteParsingError() {
     document.querySelector("#parsingNotCompleted").classList.add("hidden");
+}
+
+function isObjectEmpty(obj) {
+    return Object.keys(obj).length === 0;
+}
+
+function openFirstAmazonPage() {
+    chrome.windows.create({
+        "url": amazonOrderHistoryLast3MonthUrl
+    })
 }

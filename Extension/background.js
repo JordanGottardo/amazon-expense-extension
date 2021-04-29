@@ -100,12 +100,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             console.log("onUpdated");
             if (isCurrentPageOrderHistoryLast3Month) {
                 console.log("In last 3 month page: initializing order years urls");
-                initializeOrdersByYearUrls();
-                console.log("years");
-                console.log(ordersByYearPageUrls);
-                last3MonthsOrderWindowId = tab.windowId;
-                currentlyProcessedYear = ordersByYearPageUrls[0].year;
-                CreateNewWindow(ordersByYearPageUrls[0].url);
+                initializeOrdersByYearUrls(() => {
+                    console.log("years");
+                    console.log(ordersByYearPageUrls);
+                    last3MonthsOrderWindowId = tab.windowId;
+                    currentlyProcessedYear = ordersByYearPageUrls[0].year;
+                    CreateNewWindow(ordersByYearPageUrls[0].url);
+                });
             } else {
                 let responseCallback = undefined;
                 if (isCurrentPageOrderHistory) {
@@ -119,19 +120,24 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     });
 });
 
-function initializeOrdersByYearUrls() {
+function initializeOrdersByYearUrls(callback) {
+    getValueFromLocalStorage("calculateOnlyCurrentYear", onlyCurrentYear => {
+        let currentYear = new Date().getFullYear();
+        let firstYear = 2010;
 
-    // let currentYear = new Date().getFullYear();
-    let currentYear = 2014;
-
-    for (let year = currentYear; year >= 2010; year--) {
-    // for (let year = currentYear; year >= 2016; year--) {
-        ordersByYearPageUrls.push({
-            year: year,
-            url: AMAZON_ORDER_PAGE_BY_YEAR_URL_BASE + year.toString()
-        });
-        currentOrdersByYearPageIndex = 0;
-    }
+        if (onlyCurrentYear) {
+            console.log("Calculating only current year")
+            firstYear = currentYear;
+        }
+        for (let year = currentYear; year >= firstYear; year--) {
+            ordersByYearPageUrls.push({
+                year: year,
+                url: AMAZON_ORDER_PAGE_BY_YEAR_URL_BASE + year.toString()
+            });
+            currentOrdersByYearPageIndex = 0;
+        }
+        callback();
+    });
 }
 
 function processOrderHistoryPageDom(domContent) {
