@@ -29,8 +29,12 @@ function getStorageInitialValue(calculateOnlyCurrentYear = false) {
 
 function resetAll() {
     chrome.storage.local.clear();
-    document.querySelector("#graphContainer").textContent = "";
+    clearOldGraph();
     showIncompleteParsingError();
+}
+
+function clearOldGraph() {
+    document.querySelector("#graphContainer").textContent = "";
 }
 
 function startCalculationOnlyForCurrentYear() {
@@ -56,8 +60,6 @@ function startCalculationOnlyForCurrentYear() {
             })
         })
     });
-
-
 }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -116,6 +118,8 @@ window.onload = function () {
 }
 
 function printExpensesBarChart(years, totalExpenses, reimbursements) {
+    clearOldGraph();
+
     keys = ["totalExpense", "reimbursement"];
     legendText = {
         totalExpense: "Spesa tot.",
