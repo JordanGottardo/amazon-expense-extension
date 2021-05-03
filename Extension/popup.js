@@ -14,10 +14,6 @@ function startCalculation() {
 
     chrome.storage.local.clear(() => {
         chrome.storage.local.set(localStorageInitialValue, () => {
-            chrome.storage.local.get(null, storage => {
-                console.log("initial storage");
-                console.log(storage);
-            });
             openFirstAmazonPage();
         });
     });
@@ -32,14 +28,12 @@ function getStorageInitialValue(calculateOnlyCurrentYear = false) {
 }
 
 function resetAll() {
-    console.log("resetting storage");
     chrome.storage.local.clear();
     document.querySelector("#graphContainer").textContent = "";
     showIncompleteParsingError();
 }
 
 function startCalculationOnlyForCurrentYear() {
-    console.log("startCalculationOnlyForCurrentYear");
     let currentYear = getCurrentYear();
     let currentYearStartingValues = {
         "year": currentYear,
@@ -48,10 +42,7 @@ function startCalculationOnlyForCurrentYear() {
     };
 
     chrome.storage.local.get(null, storage => {
-        console.log("initial storage");
-        console.log(storage);
         if (storage && !isObjectEmpty(storage)) {
-            console.log(storage);
             storage.amazonExpenses[currentYear] = currentYearStartingValues;
             storage.calculationStarted = true;
             storage.calculateOnlyCurrentYear = true;
@@ -61,8 +52,6 @@ function startCalculationOnlyForCurrentYear() {
 
         chrome.storage.local.set(storage, () => {
             chrome.storage.local.get(null, newStorage => {
-                console.log("final storage");
-                console.log(newStorage);
                 openFirstAmazonPage();
             })
         })
@@ -78,13 +67,9 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 function parseAmazonExpensesAndPrintChart() {
-    console.log("Starting to print graph");
     hideIncompleteParsingError();
     chrome.storage.local.get("amazonExpenses", amazonExpenses => {
-        console.log("LocalStorage value");
-        console.log(amazonExpenses);
         let amazonExpensesObject = amazonExpenses[AMAZON_EXPENSES_KEY];
-
         let years = Object.getOwnPropertyNames(amazonExpensesObject);
         let totalExpenses = [];
         let reimbursements = [];
@@ -122,8 +107,6 @@ window.onload = function () {
     document.getElementById("resetButton").onclick = resetAll;
 
     chrome.storage.local.get("amazonExpenses", amazonExpenses => {
-        console.log("aaa");
-        console.log(amazonExpenses)
         if (amazonExpenses["amazonExpenses"] && !amazonExpenses.calculationStarted) {
             parseAmazonExpensesAndPrintChart();
         } else {
@@ -133,14 +116,6 @@ window.onload = function () {
 }
 
 function printExpensesBarChart(years, totalExpenses, reimbursements) {
-    // basic example: to be removed
-    // totalExpenses = [28.63, 1026.05, 366.58, 634.7700000000001, 564.12, 310.22, 1024.82,
-    //     3408.799999999998, 1339.9400000000005, 1154.9900000000002
-    // ];
-    // years = [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021];
-    // reimbursements = [1200, 1026.05, 366.58, 634.7700000000001, 564.12, 800, 1024.82,
-    //     3408.799999999998, 1339.9400000000005, 1154.9900000000002
-    // ];
     keys = ["totalExpense", "reimbursement"];
     legendText = {
         totalExpense: "Spesa tot.",

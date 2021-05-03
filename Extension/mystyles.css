@@ -50,7 +50,9 @@ body {
     display: none;
 }
 
-.primaryButton, .primaryButton:hover, .primaryButton:visited {
+.primaryButton,
+.primaryButton:hover,
+.primaryButton:visited {
     padding: 10px;
     border-radius: 10px;
     border-color: #424860;
@@ -58,7 +60,9 @@ body {
     background: linear-gradient(145deg, #424860, #181a24);
 }
 
-.deleteButton, .deleteButton:hover, .deleteButton:visited {
+.deleteButton,
+.deleteButton:hover,
+.deleteButton:visited {
     padding: 10px;
     border-radius: 10px;
     border-color: #ff0000;
