@@ -1,7 +1,7 @@
 {
-    "name": "Amazon expenses extension",
-    "description": "Calculates expenses on Amazon.it",
-    "version": "0.1.0",
+    "name": "Amazon, quanto mi costi?",
+    "description": "Visualizza quanto hai speso su Amazon.it, anno per anno",
+    "version": "1.0.0",
     "manifest_version": 2,
     "icons": {
         "16": "./obj-16x16.png",
