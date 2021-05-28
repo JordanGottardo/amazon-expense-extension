@@ -2,7 +2,8 @@
 **Amazon, quanto mi costi?** è un'estensione per Google Chrome che permette di calcolare e visualizzare lo storico di spese/resi su Amazon.it (al momento solamente il dominio .it è supportato).
 
 # Installazione
-## Opzione A: installazione tramite Web store (TODO)
+## Opzione A: installazione tramite Web store
+Al seguente URL: https://chrome.google.com/webstore/detail/amazon-quanto-mi-costi/kenlpmfjanggfdljkcmleegabajdmofd?hl=it
 ## Opzione B: installazione manuale
 1. Clonare/scaricare il repository 
 2. Aprire Chrome
